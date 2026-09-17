@@ -1,0 +1,186 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens.
+ * `--m3-*` holds the Material You palette. These defaults match the illogical-impulse
+ * dark scheme; at runtime `features/theme/palette.ts` overwrites them from the wallpaper.
+ * Tailwind colors only ever point at these variables, so every utility follows the theme.
+ */
+:root {
+  --m3-background: #161312;
+  --m3-surface-container-lowest: #100d0d;
+  --m3-surface-container-low: #1e1b1a;
+  --m3-surface-container: #221f1e;
+  --m3-surface-container-high: #2d2929;
+  --m3-surface-container-highest: #383433;
+  --m3-on-surface: #e9e1df;
+  --m3-on-surface-variant: #ccc5c4;
+  --m3-primary: #dfbfbb;
+  --m3-on-primary: #402b29;
+  --m3-primary-container: #58413e;
+  --m3-on-primary-container: #fddbd6;
+  --m3-secondary-container: #534341;
+  --m3-on-secondary-container: #f5ddda;
+  --m3-tertiary: #e7bdb7;
+  --m3-outline: #968f8e;
+  --m3-outline-variant: #4a4645;
+  --m3-error: #ffb4ab;
+  --m3-on-error: #690005;
+  --m3-scrim: #000000;
+  color-scheme: dark;
+}
+
+@theme {
+  --color-*: initial;
+  --font-*: initial;
+  --font-ui: 'Google Sans Flex', 'Google Sans', 'Rubik', 'Noto Sans', sans-serif;
+  --font-mono:
+    'JetBrains Mono NF', 'JetBrainsMono Nerd Font', 'JetBrainsMono Nerd Font Mono', 'JetBrains Mono', 'Noto Sans Mono', monospace;
+
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  @keyframes shimmer {
+    from {
+      background-position: -240px 0;
+    }
+    to {
+      background-position: 240px 0;
+    }
+  }
+}
+
+@theme inline {
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-background: var(--m3-background);
+  --color-surface-lowest: var(--m3-surface-container-lowest);
+  --color-surface-low: var(--m3-surface-container-low);
+  --color-surface: var(--m3-surface-container);
+  --color-surface-high: var(--m3-surface-container-high);
+  --color-surface-highest: var(--m3-surface-container-highest);
+  --color-on-surface: var(--m3-on-surface);
+  --color-on-surface-variant: var(--m3-on-surface-variant);
+  --color-primary: var(--m3-primary);
+  --color-on-primary: var(--m3-on-primary);
+  --color-primary-container: var(--m3-primary-container);
+  --color-on-primary-container: var(--m3-on-primary-container);
+  --color-secondary-container: var(--m3-secondary-container);
+  --color-on-secondary-container: var(--m3-on-secondary-container);
+  --color-tertiary: var(--m3-tertiary);
+  --color-outline: var(--m3-outline);
+  --color-outline-variant: var(--m3-outline-variant);
+  --color-error: var(--m3-error);
+  --color-on-error: var(--m3-on-error);
+  --color-scrim: var(--m3-scrim);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--color-background);
+    color: var(--color-on-surface);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+    cursor: default;
+  }
+
+  input,
+  textarea {
+    user-select: text;
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: default;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-primary-container);
+    color: var(--color-on-primary-container);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-highest);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-outline-variant);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-outline);
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-high) 25%,
+      var(--color-surface-highest) 50%,
+      var(--color-surface-high) 75%
+    );
+    background-size: 480px 100%;
+    animation: var(--animate-shimmer);
+  }
+}
+
+/* Applied for a moment while the wallpaper palette changes, so colors cross-fade. */
+.theme-transition,
+.theme-transition * {
+  transition:
+    background-color 450ms var(--ease-emphasized),
+    border-color 450ms var(--ease-emphasized),
+    outline-color 450ms var(--ease-emphasized),
+    color 450ms var(--ease-emphasized),
+    fill 450ms var(--ease-emphasized) !important;
+}
+
+/* The system preference, or the "Reduce animations" setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation-duration: 1ms !important;
+  transition-duration: 1ms !important;
+}

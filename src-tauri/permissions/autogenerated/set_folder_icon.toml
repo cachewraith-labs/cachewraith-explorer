@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-folder-icon"
+description = "Enables the set_folder_icon command without any pre-configured scope."
+commands.allow = ["set_folder_icon"]
+
+[[permission]]
+identifier = "deny-set-folder-icon"
+description = "Denies the set_folder_icon command without any pre-configured scope."
+commands.deny = ["set_folder_icon"]

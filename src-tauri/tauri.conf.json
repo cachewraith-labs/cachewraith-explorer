@@ -1,0 +1,82 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "cachewraith-explorer",
+  "mainBinaryName": "cachewraith-explorer",
+  "version": "0.1.0",
+  "identifier": "dev.cachewraith.explorer",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Files",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 560,
+        "minHeight": 420,
+        "decorations": false,
+        "dragDropEnabled": false,
+        "backgroundColor": "#161312"
+      }
+    ],
+    "security": {
+      "csp": {
+        "default-src": "'self'",
+        "script-src": "'self'",
+        "style-src": "'self' 'unsafe-inline'",
+        "img-src": "'self' data: thumb: http://thumb.localhost",
+        "font-src": "'self' data:",
+        "connect-src": "ipc: http://ipc.localhost",
+        "object-src": "'none'",
+        "base-uri": "'none'",
+        "form-action": "'none'",
+        "frame-src": "'none'"
+      },
+      "dangerousDisableAssetCspModification": [
+        "style-src"
+      ],
+      "freezePrototype": true
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "deb",
+      "rpm",
+      "appimage"
+    ],
+    "category": "Utility",
+    "shortDescription": "File explorer",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png"
+    ],
+    "publisher": "cachewraith",
+    "longDescription": "A Material You file manager for Linux: tabs, split view, fast background copies, live wallpaper theming, and full keyboard control.",
+    "linux": {
+      "deb": {
+        "depends": [
+          "xdg-utils"
+        ],
+        "desktopTemplate": "../packaging/linux.desktop.hbs",
+        "section": "utils"
+      },
+      "rpm": {
+        "depends": [
+          "xdg-utils"
+        ],
+        "desktopTemplate": "../packaging/linux.desktop.hbs"
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
+  }
+}

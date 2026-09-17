@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Files
+GenericName=File Manager
+Comment=Browse and manage your files
+Exec=@BIN@ %U
+Icon=cachewraith-explorer
+Terminal=false
+Categories=System;FileTools;FileManager;Utility;
+MimeType=inode/directory;
+Keywords=folder;explorer;files;browser;
+StartupWMClass=cachewraith-explorer

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-path-properties"
+description = "Enables the path_properties command without any pre-configured scope."
+commands.allow = ["path_properties"]
+
+[[permission]]
+identifier = "deny-path-properties"
+description = "Denies the path_properties command without any pre-configured scope."
+commands.deny = ["path_properties"]

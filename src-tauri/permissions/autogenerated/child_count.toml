@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-child-count"
+description = "Enables the child_count command without any pre-configured scope."
+commands.allow = ["child_count"]
+
+[[permission]]
+identifier = "deny-child-count"
+description = "Denies the child_count command without any pre-configured scope."
+commands.deny = ["child_count"]
