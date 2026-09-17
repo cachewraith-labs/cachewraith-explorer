@@ -25,6 +25,7 @@ use release::{Asset, Release};
 
 const MAX_PACKAGE_BYTES: u64 = 400 * 1024 * 1024;
 const MAX_SIGNATURE_BYTES: u64 = 16 * 1024;
+const MAX_PKGBUILD_BYTES: u64 = 64 * 1024;
 
 /// What the Settings page shows.
 #[derive(Debug, Clone, Serialize)]
@@ -88,8 +89,7 @@ fn update(options: &CliOptions) -> AppResult<()> {
 
     let method = InstallMethod::detect();
     if method == InstallMethod::Pacman {
-        println!("Updating through the AUR…");
-        method.update_from_aur()?;
+        update_with_pkgbuild(&agent, &release)?;
         println!(
             "Updated to {}. Restart Files to use the new version.",
             release.version
@@ -131,6 +131,35 @@ fn update(options: &CliOptions) -> AppResult<()> {
         release.version
     );
     Ok(())
+}
+
+/// Arch: download the release's signed PKGBUILD, verify it, and build it with makepkg.
+fn update_with_pkgbuild(agent: &Agent, release: &Release) -> AppResult<()> {
+    let (pkgbuild, signature) = release.named(release::PKGBUILD_ASSET).ok_or_else(|| {
+        AppError::invalid(format!(
+            "Release {} has no signed PKGBUILD",
+            release.version
+        ))
+    })?;
+    let dir = download_dir()?.join(format!("pkgbuild-{}", release.version));
+    let _ = fs::remove_dir_all(&dir);
+    DirBuilder::new()
+        .mode(0o700)
+        .create(&dir)
+        .map_err(|e| AppError::io(&dir, e))?;
+
+    let result = (|| {
+        println!("Downloading the PKGBUILD for {}…", release.version);
+        let target = dir.join(release::PKGBUILD_ASSET);
+        download(agent, pkgbuild, &target, MAX_PKGBUILD_BYTES, false)?;
+        let signature_text = fetch_text(agent, signature)?;
+        println!("Verifying signature…");
+        verify::verify_file(&target, &signature_text, verify::RELEASE_PUBLIC_KEY)?;
+        println!("Building and installing with makepkg…");
+        InstallMethod::build_pkgbuild(&dir)
+    })();
+    let _ = fs::remove_dir_all(&dir);
+    result
 }
 
 fn agent() -> Agent {

@@ -141,10 +141,10 @@ The Release workflow then:
 1. checks the tag matches the version;
 2. builds the `.deb`, `.rpm` and AppImage on Ubuntu 22.04 and signs them;
 3. adds version-free copies (`cachewraith-explorer-amd64.deb`, …) so install commands can use
-   `releases/latest/download/…`;
+   `releases/latest/download/…`, and a signed `PKGBUILD` for Arch;
 4. publishes the GitHub release;
-5. renders the AUR `PKGBUILD` and pushes it to
-   [cachewraith-explorer-bin](https://aur.archlinux.org/packages/cachewraith-explorer-bin).
+5. if the repository variable `AUR_PUBLISH` is `true`, renders `.SRCINFO` and pushes the
+   PKGBUILD to [cachewraith-explorer-bin](https://aur.archlinux.org/packages/cachewraith-explorer-bin).
 
 Installed copies pick the release up with `cachewraith-explorer update`.
 

@@ -28,7 +28,7 @@ XFCE, Cinnamon and tiling compositors like Hyprland and Sway.
 curl -fsSL https://raw.githubusercontent.com/cachewraith-labs/cachewraith-explorer/main/install.sh | sh
 ```
 
-The script uses your distribution's package manager: apt, dnf, zypper, or the AUR. On anything
+The script uses your distribution's package manager: apt, dnf, zypper, or pacman. On anything
 else it installs the AppImage. Prefer to see what runs? Use the commands below.
 
 ### Ubuntu, Debian, Linux Mint, Pop!\_OS, elementary OS, Zorin OS
@@ -53,12 +53,17 @@ sudo zypper install --allow-unsigned-rpm ./cachewraith-explorer-x86_64.rpm
 
 ### Arch Linux, Manjaro, EndeavourOS, CachyOS
 
-From the [AUR](https://aur.archlinux.org/packages/cachewraith-explorer-bin):
+Build the package from the signed PKGBUILD attached to every release:
 
 ```sh
-yay -S cachewraith-explorer-bin
-# or: paru -S cachewraith-explorer-bin
+sudo pacman -S --needed base-devel
+mkdir -p ~/.cache/cachewraith-explorer-pkg && cd ~/.cache/cachewraith-explorer-pkg
+curl -fLO https://github.com/cachewraith-labs/cachewraith-explorer/releases/latest/download/PKGBUILD
+makepkg -si
 ```
+
+It installs `cachewraith-explorer-bin` through pacman, with its dependencies. An AUR package
+(`yay -S cachewraith-explorer-bin`) will follow once AUR account registration reopens.
 
 ### Any distribution: AppImage
 
@@ -98,19 +103,19 @@ cachewraith-explorer update
 ```
 
 No need to uninstall first. It finds the newest release, checks its signature, and upgrades
-the way you installed it (apt, dnf, zypper, AUR helper, or the AppImage file itself). Your
+the way you installed it (apt, dnf, zypper, makepkg, or the AppImage file itself). Your
 settings, pinned folders and folder icons are kept. `cachewraith-explorer update --check`
 only reports whether an update exists.
 
 ## Uninstall
 
-| Installed with    | Command                                   |
-| ----------------- | ----------------------------------------- |
-| `.deb`            | `sudo apt remove cachewraith-explorer`    |
-| `.rpm` (Fedora)   | `sudo dnf remove cachewraith-explorer`    |
-| `.rpm` (openSUSE) | `sudo zypper remove cachewraith-explorer` |
-| AUR               | `yay -Rns cachewraith-explorer-bin`       |
-| AppImage          | delete the `.AppImage` file               |
+| Installed with    | Command                                     |
+| ----------------- | ------------------------------------------- |
+| `.deb`            | `sudo apt remove cachewraith-explorer`      |
+| `.rpm` (Fedora)   | `sudo dnf remove cachewraith-explorer`      |
+| `.rpm` (openSUSE) | `sudo zypper remove cachewraith-explorer`   |
+| Arch              | `sudo pacman -Rns cachewraith-explorer-bin` |
+| AppImage          | delete the `.AppImage` file                 |
 
 Settings live in `~/.config/cachewraith-explorer`; delete it for a clean slate.
 

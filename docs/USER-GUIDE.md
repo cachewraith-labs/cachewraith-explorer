@@ -81,7 +81,7 @@ cachewraith-explorer update --force   # reinstall the latest release
 | ----------------------- | -------------------------------------------------------------------- |
 | `.deb`                  | `apt-get install` of the new package (asks for your password)        |
 | `.rpm`                  | `dnf install`, `zypper install` or `rpm -U` (asks for your password) |
-| AUR                     | runs `yay` or `paru` to rebuild `cachewraith-explorer-bin`           |
+| Arch (PKGBUILD or AUR)  | downloads the signed PKGBUILD and runs `makepkg -si`                 |
 | AppImage                | replaces the AppImage file where it is, no password needed           |
 | source (`make install`) | tells you to `git pull && make install`                              |
 

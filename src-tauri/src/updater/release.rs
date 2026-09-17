@@ -39,13 +39,26 @@ pub struct Release {
     assets: Vec<Asset>,
 }
 
+/// The Arch Linux build recipe attached to every release.
+pub const PKGBUILD_ASSET: &str = "PKGBUILD";
+
 impl Release {
     /// The package for `kind` and its detached signature (`<package>.sig`).
     pub fn package(&self, kind: PackageKind) -> Option<(&Asset, &Asset)> {
         let package = self.assets.iter().find(|a| kind.matches(&a.name))?;
-        let signature_name = format!("{}.sig", package.name);
+        self.signed(package)
+    }
+
+    /// The asset named exactly `name` and its signature.
+    pub fn named(&self, name: &str) -> Option<(&Asset, &Asset)> {
+        let asset = self.assets.iter().find(|a| a.name == name)?;
+        self.signed(asset)
+    }
+
+    fn signed<'a>(&'a self, asset: &'a Asset) -> Option<(&'a Asset, &'a Asset)> {
+        let signature_name = format!("{}.sig", asset.name);
         let signature = self.assets.iter().find(|a| a.name == signature_name)?;
-        Some((package, signature))
+        Some((asset, signature))
     }
 }
 
@@ -117,6 +130,10 @@ mod tests {
              "browser_download_url": "https://evil.example/cachewraith-explorer-0.2.0-1.x86_64.rpm"},
             {"name": "cachewraith-explorer-0.2.0-1.x86_64.rpm.sig", "size": 1,
              "browser_download_url": "https://github.com/cachewraith-labs/cachewraith-explorer/releases/download/v0.2.0/cachewraith-explorer-0.2.0-1.x86_64.rpm.sig"},
+            {"name": "PKGBUILD", "size": 900,
+             "browser_download_url": "https://github.com/cachewraith-labs/cachewraith-explorer/releases/download/v0.2.0/PKGBUILD"},
+            {"name": "PKGBUILD.sig", "size": 1,
+             "browser_download_url": "https://github.com/cachewraith-labs/cachewraith-explorer/releases/download/v0.2.0/PKGBUILD.sig"},
             {"name": "cachewraith-explorer_0.2.0_amd64.AppImage", "size": 10,
              "browser_download_url": "https://github.com/cachewraith-labs/cachewraith-explorer/releases/download/v0.2.0/cachewraith-explorer_0.2.0_amd64.AppImage"}
         ]
@@ -138,6 +155,17 @@ mod tests {
         assert!(release.package(PackageKind::Rpm).is_none());
         // The AppImage has no signature, so it cannot be installed.
         assert!(release.package(PackageKind::AppImage).is_none());
+    }
+
+    #[test]
+    fn finds_the_signed_pkgbuild_by_exact_name() {
+        let release = parse(SAMPLE).unwrap();
+        let (pkgbuild, sig) = release.named(PKGBUILD_ASSET).unwrap();
+        assert_eq!(
+            (pkgbuild.name.as_str(), sig.name.as_str()),
+            ("PKGBUILD", "PKGBUILD.sig")
+        );
+        assert!(release.named("PKGBUILD.sig").is_none());
     }
 
     #[test]

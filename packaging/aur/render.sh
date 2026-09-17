@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Writes PKGBUILD and .SRCINFO for a release.
 #   packaging/aur/render.sh <version> <path to the release .deb> [output dir]
+# SRCINFO=0 skips .SRCINFO (it needs makepkg, so it is only made on Arch).
 set -euo pipefail
 
 version="$1"
@@ -17,6 +18,11 @@ sed -e "s/@VERSION@/$version/" \
     -e "s/@DEB_SHA256@/$(sha256sum "$deb" | cut -d' ' -f1)/" \
     -e "s/@LICENSE_SHA256@/$(sha256sum "$root/LICENSE" | cut -d' ' -f1)/" \
     "$here/PKGBUILD.in" > "$out/PKGBUILD"
+
+if [[ "${SRCINFO:-1}" == "0" ]]; then
+    echo "Rendered $out/PKGBUILD for $version"
+    exit 0
+fi
 
 # makepkg refuses to run as root (CI containers run as root).
 if [[ "$(id -u)" -eq 0 ]]; then

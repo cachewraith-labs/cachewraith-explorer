@@ -4,13 +4,12 @@
 #   curl -fsSL https://raw.githubusercontent.com/cachewraith-labs/cachewraith-explorer/main/install.sh | sh
 #
 # Debian/Ubuntu family -> .deb with apt      Fedora/RHEL family -> .rpm with dnf
-# openSUSE             -> .rpm with zypper   Arch family        -> AUR with yay/paru
+# openSUSE             -> .rpm with zypper   Arch family        -> release PKGBUILD with makepkg
 # anything else        -> AppImage in ~/.local/bin
 set -eu
 
 REPO="cachewraith-labs/cachewraith-explorer"
 BASE="https://github.com/$REPO/releases/latest/download"
-AUR_PACKAGE="cachewraith-explorer-bin"
 
 say() { printf '\033[1m==>\033[0m %s\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
@@ -40,18 +39,13 @@ download() {
 }
 
 if has pacman; then
-    if has yay; then
-        say "Installing $AUR_PACKAGE from the AUR with yay"
-        yay -S --needed "$AUR_PACKAGE"
-    elif has paru; then
-        say "Installing $AUR_PACKAGE from the AUR with paru"
-        paru -S --needed "$AUR_PACKAGE"
-    else
-        say "Building $AUR_PACKAGE from the AUR with makepkg"
-        $SUDO pacman -S --needed --noconfirm base-devel git
-        git clone "https://aur.archlinux.org/$AUR_PACKAGE.git" "$TMP/aur"
-        (cd "$TMP/aur" && makepkg -si --noconfirm)
-    fi
+    [ "$(id -u)" -ne 0 ] || die "On Arch, run this as your normal user (makepkg refuses root)."
+    say "Installing build tools (base-devel)"
+    $SUDO pacman -S --needed --noconfirm base-devel
+    download PKGBUILD
+    mkdir "$TMP/arch" && mv "$TMP/PKGBUILD" "$TMP/arch/PKGBUILD"
+    say "Building and installing the cachewraith-explorer-bin package"
+    (cd "$TMP/arch" && makepkg -si --noconfirm)
 elif has apt-get; then
     download cachewraith-explorer-amd64.deb
     $SUDO apt-get install -y "$TMP/cachewraith-explorer-amd64.deb"
