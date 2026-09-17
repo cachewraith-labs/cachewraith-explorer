@@ -3,3 +3,4 @@ dist
 *.local
 .DS_Store
 dist-packages
+packaging/aur/out

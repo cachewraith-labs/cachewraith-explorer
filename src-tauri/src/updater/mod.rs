@@ -87,6 +87,15 @@ fn update(options: &CliOptions) -> AppResult<()> {
     }
 
     let method = InstallMethod::detect();
+    if method == InstallMethod::Pacman {
+        println!("Updating through the AUR…");
+        method.update_from_aur()?;
+        println!(
+            "Updated to {}. Restart Files to use the new version.",
+            release.version
+        );
+        return Ok(());
+    }
     let Some(kind) = method.package_kind() else {
         return Err(method.unsupported());
     };

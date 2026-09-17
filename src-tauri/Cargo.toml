@@ -1,10 +1,11 @@
 [package]
 name = "cachewraith-explorer"
-version = "0.1.0"
+version = "0.1.1"
 description = "A Material You file explorer for Hyprland"
 authors = ["cachewraith"]
 edition = "2024"
 rust-version = "1.88"
+license = "MIT"
 publish = false
 
 [lib]

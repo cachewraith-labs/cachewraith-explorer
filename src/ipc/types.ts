@@ -148,6 +148,6 @@ export interface UpdateStatus {
   latest: string;
   updateAvailable: boolean;
   /** How this copy was installed; `manual` cannot update itself. */
-  method: 'appimage' | 'deb' | 'rpm' | 'manual';
+  method: 'appimage' | 'deb' | 'rpm' | 'pacman' | 'manual';
   releaseUrl: string;
 }

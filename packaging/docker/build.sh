@@ -13,8 +13,6 @@ pnpm tauri build --bundles deb,rpm,appimage
 mkdir -p /out
 find src-tauri/target/release/bundle -maxdepth 2 -type f \
     \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \) -exec cp -v {} /out/ \;
-(cd /out && sha256sum -- *.deb *.rpm *.AppImage > SHA256SUMS)
-
 # Sign every package for `cachewraith-explorer update`. The key only ever arrives through
 # the environment (a CI secret or `make package-signed`); it is never written to disk here.
 if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
@@ -25,6 +23,14 @@ if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
 else
     echo "WARNING: TAURI_SIGNING_PRIVATE_KEY is not set; packages are unsigned and cannot be installed by 'update'." >&2
 fi
+
+# Version-free copies, so install commands can always use .../releases/latest/download/<name>.
+# Their names deliberately differ from the patterns the updater looks for.
+cp /out/*_amd64.deb /out/cachewraith-explorer-amd64.deb
+cp /out/*.x86_64.rpm /out/cachewraith-explorer-x86_64.rpm
+cp /out/*_amd64.AppImage /out/cachewraith-explorer-x86_64.AppImage
+
+(cd /out && sha256sum -- *.deb *.rpm *.AppImage > SHA256SUMS)
 
 # Hand the files to the user who ran the build, not root.
 if [[ -n "${HOST_UID:-}" ]]; then

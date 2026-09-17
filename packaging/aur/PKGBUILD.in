@@ -1,0 +1,34 @@
+# Maintainer: cachewraith <somonorhong011 at gmail dot com>
+#
+# Generated from packaging/aur/PKGBUILD.in by render.sh on every release.
+# Repackages the signed .deb from the GitHub release (built on Ubuntu 22.04).
+
+pkgname=cachewraith-explorer-bin
+_pkgname=cachewraith-explorer
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc="A Material You file manager for Linux: tabs, split view, fast copies, live theming"
+arch=('x86_64')
+url="https://github.com/cachewraith-labs/cachewraith-explorer"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'libsoup3' 'glib2' 'gdk-pixbuf2' 'cairo' 'dbus' 'hicolor-icon-theme')
+optdepends=(
+  'xdg-utils: open files with their default apps and set the default file manager'
+  'yay: update with "cachewraith-explorer update"'
+  'paru: update with "cachewraith-explorer update"'
+)
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!strip' '!debug')
+source=(
+  "$_pkgname-$pkgver.deb::$url/releases/download/v$pkgver/${_pkgname}_${pkgver}_amd64.deb"
+  "LICENSE-$pkgver::https://raw.githubusercontent.com/cachewraith-labs/cachewraith-explorer/v$pkgver/LICENSE"
+)
+noextract=("$_pkgname-$pkgver.deb")
+sha256sums=('@DEB_SHA256@'
+            '@LICENSE_SHA256@')
+
+package() {
+  bsdtar -xOf "$_pkgname-$pkgver.deb" 'data.tar*' | bsdtar -xf - -C "$pkgdir"
+  install -Dm644 "LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

@@ -91,15 +91,13 @@ mod tests {
         let mut checked = 0;
         for entry in fs::read_dir(&dir).unwrap() {
             let path = entry.unwrap().path();
-            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            let signature_path = format!("{}.sig", path.display());
+            // Version-free alias copies carry no signature of their own.
+            let Ok(signature) = fs::read_to_string(&signature_path) else {
                 continue;
             };
-            if path.extension().is_some_and(|ext| ext == "sig") || name == "SHA256SUMS" {
-                continue;
-            }
-            let signature = fs::read_to_string(format!("{}.sig", path.display())).unwrap();
             verify_file(&path, &signature, RELEASE_PUBLIC_KEY)
-                .unwrap_or_else(|e| panic!("{name}: {e}"));
+                .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
             checked += 1;
         }
         assert_eq!(checked, 3, "expected .deb, .rpm and AppImage");

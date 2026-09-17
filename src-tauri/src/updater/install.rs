@@ -17,6 +17,9 @@ use crate::error::{AppError, AppResult};
 use crate::updater::release::PackageKind;
 
 const SYSTEM_BINARY: &str = "/usr/bin/cachewraith-explorer";
+/// The AUR package, updated by an AUR helper rather than by downloading a release asset.
+pub const AUR_PACKAGE: &str = "cachewraith-explorer-bin";
+const AUR_HELPERS: &[&str] = &["yay", "paru"];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InstallMethod {
@@ -24,6 +27,8 @@ pub enum InstallMethod {
     AppImage(PathBuf),
     Deb,
     Rpm,
+    /// Arch Linux, from the AUR.
+    Pacman,
     /// Built from source or copied by hand; the updater cannot manage it.
     Manual(PathBuf),
 }
@@ -34,6 +39,7 @@ pub enum MethodName {
     AppImage,
     Deb,
     Rpm,
+    Pacman,
     Manual,
 }
 
@@ -55,6 +61,9 @@ impl InstallMethod {
             if succeeds("rpm", &["-qf", SYSTEM_BINARY]) {
                 return Self::Rpm;
             }
+            if succeeds("pacman", &["-Qqo", SYSTEM_BINARY]) {
+                return Self::Pacman;
+            }
         }
         Self::Manual(exe)
     }
@@ -64,7 +73,7 @@ impl InstallMethod {
             Self::AppImage(_) => Some(PackageKind::AppImage),
             Self::Deb => Some(PackageKind::Deb),
             Self::Rpm => Some(PackageKind::Rpm),
-            Self::Manual(_) => None,
+            Self::Pacman | Self::Manual(_) => None,
         }
     }
 
@@ -73,6 +82,7 @@ impl InstallMethod {
             Self::AppImage(_) => MethodName::AppImage,
             Self::Deb => MethodName::Deb,
             Self::Rpm => MethodName::Rpm,
+            Self::Pacman => MethodName::Pacman,
             Self::Manual(_) => MethodName::Manual,
         }
     }
@@ -104,12 +114,41 @@ impl InstallMethod {
                     run_privileged(&["rpm", "-U", "--replacepkgs", path])
                 }
             }
-            Self::Manual(_) => Err(self.unsupported()),
+            Self::Pacman | Self::Manual(_) => Err(self.unsupported()),
+        }
+    }
+
+    /// Arch: rebuilds the AUR package with the user's AUR helper, which fetches the new
+    /// release itself. AUR helpers refuse to run as root and need the terminal for prompts.
+    pub fn update_from_aur(&self) -> AppResult<()> {
+        if rustix::process::geteuid().is_root() {
+            return Err(AppError::invalid(
+                "Run the update as your normal user, not root (AUR helpers refuse root): cachewraith-explorer update",
+            ));
+        }
+        let helper = AUR_HELPERS
+            .iter()
+            .copied()
+            .find(|helper| on_path(helper))
+            .ok_or_else(|| self.unsupported())?;
+        let status = Command::new(helper)
+            .args(["-S", "--needed", AUR_PACKAGE])
+            .status()
+            .map_err(|e| AppError::io(helper, e))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(AppError::invalid(format!("{helper} failed ({status})")))
         }
     }
 
     /// Why a manual install cannot update itself, and what to do instead.
     pub fn unsupported(&self) -> AppError {
+        if *self == Self::Pacman {
+            return AppError::invalid(format!(
+                "Installed from the AUR. Update with your AUR helper: yay -S {AUR_PACKAGE}"
+            ));
+        }
         let location = match self {
             Self::Manual(exe) => exe.display().to_string(),
             _ => "This copy".to_owned(),
