@@ -39,7 +39,20 @@ the wallpaper theme.
 | Alt+Enter or Ctrl+I                              | Properties: live folder size, dates, owner      |
 
 Drag files between panes, onto folders, tabs, sidebar places or drives. Same drive moves,
-another drive copies; hold Ctrl to force copy, Shift to force move.
+another drive copies; hold Ctrl to force copy, Shift to force move. Files can also be
+dragged out of the window into other apps: VS Code, other file managers, browsers, chat apps.
+
+Copy and cut also put the files on the system clipboard, so they paste into VS Code, other
+file managers, chat apps and terminals (as `text/uri-list`, `x-special/gnome-copied-files`
+and plain paths). They stay pasteable while Files is running.
+
+## Compress
+
+Right-click → **Compress…** (or "Compress…" in the palette) packs the selection into one
+archive next to it: `.zip`, `.7z`, `.tar.gz`, `.tar.xz`, `.tar.zst`, `.tar.bz2` or plain
+`.tar`. It runs in the background with progress, pause and cancel, never overwrites (a second
+archive becomes `name (2).tar.gz`), and removes a half-written archive if it fails. Symlinks
+are stored as links, not followed; `.7z` skips them. The last format used is offered first.
 
 ## Icons
 
@@ -48,7 +61,11 @@ another drive copies; hold Ctrl to force copy, Shift to force move.
   before `ts`). Files are drawn as pages; images are shown as photos at their own shape.
 - **Folders** use the tinted design glyph, or Material icons by folder name (Settings →
   Appearance → Folder icons → By name). Any folder can get its own icon: right-click →
-  **Change icon…**, the details panel, or "Change folder icon…" in the palette.
+  **Change icon…**, the details panel, or "Change folder icon…" in the palette. The picker
+  has three tabs: **Folders** (the Material folder set), **Logos** (Material-style folders in a
+  framework's, language's or app's color, with its logo as the emblem: FastAPI, Laravel, Django, Spring, Flutter, Godot, Unity…,
+  from [Simple Icons](https://simpleicons.org)), and **Symbols** (game, document, music,
+  money, work…).
 - Custom icons live in `~/.local/share/cachewraith-explorer/folder-icons.json` and follow
   folders this app renames, moves or deletes. A folder renamed by another program loses its
   custom icon.
@@ -62,10 +79,22 @@ symlinks are not followed, hard links count once, and other drives mounted insid
 ## Default file manager
 
 `cachewraith-explorer --make-default` (or Settings → Default app) sets the `inode/directory`
-handler, which covers `xdg-open`, "Show in folder" and download folders in browsers. It uses
-`xdg-mime`, or edits `~/.config/mimeapps.list` when that is missing. The previous app is
-remembered, so Settings can switch back. For an AppImage, a launcher entry pointing at the
-AppImage is created in `~/.local/share/applications`.
+handler, which covers `xdg-open` and download folders in browsers. It uses `xdg-mime`, or
+edits `~/.config/mimeapps.list` when that is missing. The previous app is remembered, so
+Settings can switch back. For an AppImage, a launcher entry pointing at the AppImage is
+created in `~/.local/share/applications`.
+
+Many apps skip that handler: VS Code's "Reveal in File Explorer", "Show in folder" in
+Chromium-based browsers, and others call the `org.freedesktop.FileManager1` D-Bus service
+instead. While Files is the default, it provides that service: a running window opens each
+request in a new tab, and `~/.local/share/dbus-1/services/org.freedesktop.FileManager1.service`
+starts Files when it is not running. That file overrides GNOME Files, Dolphin and Thunar for
+your user only, and is removed when you switch back.
+
+Settings → Default app has an on/off switch. Turning it off hands folders to the app shown
+under "When turned off, use": the file manager Files replaced if it knows it, otherwise the
+first installed one (GNOME Files, Dolphin, Thunar…); you can pick another. From a terminal:
+`cachewraith-explorer --restore-default`.
 
 `cachewraith-explorer --default-status` prints the current handler (exit code 0 if it is Files).
 
@@ -113,6 +142,6 @@ not match.
 
 ## Not built yet
 
-Columns view, drive-usage breakdown, compress/extract, "Open with…", undo for moves, dropping
-files from other apps, a Flatpak, the `org.freedesktop.FileManager1` D-Bus service (used by a
-few apps for "Show in folder"), and exact handling of non-UTF-8 file names.
+Columns view, drive-usage breakdown, extracting archives, pasting files copied in other apps,
+"Open with…", undo for moves, dropping files from other apps, a Flatpak, and exact handling
+of non-UTF-8 file names.

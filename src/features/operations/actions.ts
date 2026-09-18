@@ -4,8 +4,8 @@
 
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
-import { fsApi, jobsApi, launcherApi, trashApi } from '@/ipc/api';
-import type { Entry, JobKind } from '@/ipc/types';
+import { desktopApi, fsApi, jobsApi, launcherApi, trashApi } from '@/ipc/api';
+import type { ArchiveFormat, Entry, JobKind } from '@/ipc/types';
 import { basename, dirname, isInside } from '@/shared/lib/path';
 
 import { useDialogs } from '../dialogs/store';
@@ -18,10 +18,15 @@ import { useFileClipboard } from './clipboard';
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
-async function enqueue(kind: JobKind, sources: string[], destination?: string) {
+async function enqueue(kind: JobKind, sources: string[], destination?: string, format?: ArchiveFormat) {
   if (sources.length === 0) return;
   try {
-    await jobsApi.enqueue(destination === undefined ? { kind, sources } : { kind, sources, destination });
+    await jobsApi.enqueue({
+      kind,
+      sources,
+      ...(destination === undefined ? {} : { destination }),
+      ...(format === undefined ? {} : { format }),
+    });
   } catch (err) {
     toast.error("Couldn't start the operation", err);
   }
@@ -49,12 +54,14 @@ export const fileActions = {
   copy(paths: string[]) {
     if (paths.length === 0) return;
     useFileClipboard.getState().put({ mode: 'copy', paths });
+    offerToSystemClipboard(paths, false);
     toast.info(`Copied ${plural(paths.length, 'item')}`);
   },
 
   cut(paths: string[]) {
     if (paths.length === 0) return;
     useFileClipboard.getState().put({ mode: 'cut', paths });
+    offerToSystemClipboard(paths, true);
     toast.info(`Cut ${plural(paths.length, 'item')}`, 'Paste to move them');
   },
 
@@ -108,6 +115,18 @@ export const fileActions = {
     } catch (err) {
       toast.error("Couldn't copy to the clipboard", err);
     }
+  },
+
+  requestCompress(paths: string[]) {
+    if (paths.length > 0) useDialogs.getState().open({ type: 'compress', paths });
+  },
+
+  /** Packs `paths` into one archive next to the first of them. */
+  compress(paths: string[], format: ArchiveFormat) {
+    const first = paths[0];
+    if (first === undefined) return;
+    useSettings.getState().update({ archiveFormat: format });
+    void enqueue('compress', paths, dirname(first), format);
   },
 
   requestRename(entry: Entry) {
@@ -192,6 +211,13 @@ export const fileActions = {
     });
   },
 };
+
+/** Pasting inside this app works without it, so a failure only warns. */
+function offerToSystemClipboard(paths: string[], cut: boolean) {
+  desktopApi
+    .copyFilesToClipboard(paths, cut)
+    .catch((err: unknown) => toast.error("Couldn't put the files on the system clipboard", err));
+}
 
 function trashIds(entries: Entry[]): string[] {
   return entries.flatMap((entry) => (entry.trashId === undefined ? [] : [entry.trashId]));

@@ -5,6 +5,7 @@ import type { Entry } from '@/ipc/types';
 export type DialogRequest =
   | { type: 'rename'; entry: Entry }
   | { type: 'newFolder'; parent: string }
+  | { type: 'compress'; paths: string[] }
   | {
       type: 'confirm';
       title: string;

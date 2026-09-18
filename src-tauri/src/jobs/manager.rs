@@ -11,8 +11,9 @@ use parking_lot::Mutex;
 
 use crate::error::{AppError, AppResult};
 use crate::fs::{PathChangeSink, paths};
+use crate::jobs::archive;
 use crate::jobs::control::JobControl;
-use crate::jobs::model::{JobKind, JobRequest, JobSnapshot, JobStatus};
+use crate::jobs::model::{ArchiveFormat, JobKind, JobRequest, JobSnapshot, JobStatus};
 use crate::jobs::progress::RunContext;
 use crate::jobs::transfer;
 
@@ -24,6 +25,7 @@ pub struct JobRecord {
     pub snapshot: Mutex<JobSnapshot>,
     request_sources: Vec<PathBuf>,
     request_destination: Option<PathBuf>,
+    request_format: Option<ArchiveFormat>,
 }
 
 /// Two lanes, each a single worker thread with a FIFO queue:
@@ -72,7 +74,12 @@ impl JobManager {
             .as_deref()
             .map(paths::parse_absolute)
             .transpose()?;
-        validate(request.kind, &sources, destination.as_deref())?;
+        validate(
+            request.kind,
+            &sources,
+            destination.as_deref(),
+            request.format,
+        )?;
 
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let snapshot = JobSnapshot {
@@ -81,6 +88,7 @@ impl JobManager {
             status: JobStatus::Queued,
             sources: request.sources,
             destination: request.destination,
+            format: request.format,
             bytes_total: 0,
             bytes_done: 0,
             items_total: 0,
@@ -95,6 +103,7 @@ impl JobManager {
             snapshot: Mutex::new(snapshot.clone()),
             request_sources: sources,
             request_destination: destination,
+            request_format: request.format,
         });
         self.jobs.lock().insert(id, Arc::clone(&record));
         (self.sink)(&snapshot);
@@ -137,7 +146,8 @@ impl JobManager {
         };
         let snapshot = {
             let mut snap = record.snapshot.lock();
-            if snap.status.is_finished() || snap.kind != JobKind::Copy && snap.kind != JobKind::Move
+            if snap.status.is_finished()
+                || !matches!(snap.kind, JobKind::Copy | JobKind::Move | JobKind::Compress)
             {
                 return;
             }
@@ -196,7 +206,13 @@ fn run(record: &Arc<JobRecord>, sink: &Sink, on_path_change: &PathChangeSink) {
         (JobKind::Move, Some(dest)) => transfer::move_into(sources, dest, &mut ctx),
         (JobKind::Trash, _) => transfer::trash(sources, &mut ctx),
         (JobKind::Delete, _) => transfer::delete(sources, &mut ctx),
-        (JobKind::Copy | JobKind::Move, None) => Err(AppError::invalid("Missing destination")),
+        (JobKind::Compress, Some(dest)) => match record.request_format {
+            Some(format) => archive::compress(sources, dest, format, &mut ctx).map(|_| ()),
+            None => Err(AppError::invalid("Choose an archive format")),
+        },
+        (JobKind::Copy | JobKind::Move | JobKind::Compress, None) => {
+            Err(AppError::invalid("Missing destination"))
+        }
     };
     // Also after a failure or cancel: whatever did move, moved.
     for change in ctx.take_changes() {
@@ -224,7 +240,12 @@ fn finish(record: &JobRecord, sink: &Sink, result: AppResult<()>) {
     sink(&snapshot);
 }
 
-fn validate(kind: JobKind, sources: &[PathBuf], destination: Option<&Path>) -> AppResult<()> {
+fn validate(
+    kind: JobKind,
+    sources: &[PathBuf],
+    destination: Option<&Path>,
+    format: Option<ArchiveFormat>,
+) -> AppResult<()> {
     let home = dirs::home_dir();
     for source in sources {
         if source == Path::new("/") || Some(source) == home.as_ref() {
@@ -235,8 +256,11 @@ fn validate(kind: JobKind, sources: &[PathBuf], destination: Option<&Path>) -> A
         }
     }
     match (kind, destination) {
-        (JobKind::Copy | JobKind::Move, None) => {
+        (JobKind::Copy | JobKind::Move | JobKind::Compress, None) => {
             Err(AppError::invalid("Choose a destination folder"))
+        }
+        (JobKind::Compress, _) if format.is_none() => {
+            Err(AppError::invalid("Choose an archive format"))
         }
         _ => Ok(()),
     }
@@ -260,6 +284,7 @@ fn is_quick(kind: JobKind, sources: &[PathBuf], destination: Option<&Path>) -> b
 
 #[cfg(test)]
 mod tests {
+    use std::fs::File;
     use std::sync::mpsc::{Receiver, channel};
     use std::time::Duration;
 
@@ -293,6 +318,7 @@ mod tests {
                 .map(|p| p.to_string_lossy().into_owned())
                 .collect(),
             destination: destination.map(|d| d.to_string_lossy().into_owned()),
+            format: None,
         }
     }
 
@@ -371,6 +397,93 @@ mod tests {
         assert!(!dest.exists());
     }
 
+    fn compress(
+        jobs: &JobManager,
+        rx: &Receiver<JobSnapshot>,
+        src: &Path,
+        format: ArchiveFormat,
+    ) -> JobSnapshot {
+        let mut req = request(JobKind::Compress, &[src], src.parent());
+        req.format = Some(format);
+        let snap = jobs.enqueue(req).unwrap();
+        wait_finished(rx, snap.id)
+    }
+
+    #[test]
+    fn compresses_to_every_format_and_reads_back() {
+        let root = tempfile::tempdir().unwrap();
+        let src = root.path().join("proj");
+        fs::create_dir_all(src.join("app")).unwrap();
+        fs::write(src.join("app/main.py"), b"print('hi')\n".repeat(1000)).unwrap();
+        std::os::unix::fs::symlink("app/main.py", src.join("link")).unwrap();
+
+        let (jobs, rx) = manager();
+        for format in [
+            ArchiveFormat::Zip,
+            ArchiveFormat::Tar,
+            ArchiveFormat::TarGz,
+            ArchiveFormat::TarXz,
+            ArchiveFormat::TarZst,
+            ArchiveFormat::TarBz2,
+            ArchiveFormat::SevenZ,
+        ] {
+            let done = compress(&jobs, &rx, &src, format);
+            assert_eq!(
+                done.status,
+                JobStatus::Completed,
+                "{format:?}: {:?}",
+                done.error
+            );
+            assert_eq!(done.bytes_done, done.bytes_total);
+            let archive = root.path().join(format!("proj.{}", format.extension()));
+            assert!(fs::metadata(&archive).unwrap().len() > 0, "{format:?}");
+        }
+
+        // A second archive of the same kind gets a new name, extension intact.
+        compress(&jobs, &rx, &src, ArchiveFormat::TarGz);
+        assert!(root.path().join("proj (2).tar.gz").exists());
+
+        let zip = zip::ZipArchive::new(File::open(root.path().join("proj.zip")).unwrap()).unwrap();
+        let mut names: Vec<_> = zip.file_names().map(str::to_owned).collect();
+        names.sort();
+        assert_eq!(
+            names,
+            ["proj/", "proj/app/", "proj/app/main.py", "proj/link"]
+        );
+
+        let gz = flate2::read::GzDecoder::new(File::open(root.path().join("proj.tar.gz")).unwrap());
+        let mut tar = tar::Archive::new(gz);
+        let mut found = Vec::new();
+        for entry in tar.entries().unwrap() {
+            let mut entry = entry.unwrap();
+            let path = entry.path().unwrap().to_string_lossy().into_owned();
+            if path == "proj/app/main.py" {
+                let mut text = String::new();
+                std::io::Read::read_to_string(&mut entry, &mut text).unwrap();
+                assert_eq!(text.len(), 12_000);
+            }
+            if path == "proj/link" {
+                assert!(entry.header().entry_type().is_symlink());
+            }
+            found.push(path);
+        }
+        assert_eq!(found.len(), 4, "{found:?}");
+    }
+
+    #[test]
+    fn compress_needs_a_format() {
+        let root = tempfile::tempdir().unwrap();
+        let (jobs, _rx) = manager();
+        assert!(
+            jobs.enqueue(request(
+                JobKind::Compress,
+                &[root.path()],
+                Some(Path::new("/tmp"))
+            ))
+            .is_err()
+        );
+    }
+
     #[test]
     fn rejects_dangerous_or_incomplete_requests() {
         let (jobs, _rx) = manager();
@@ -386,6 +499,7 @@ mod tests {
             kind: JobKind::Trash,
             sources: vec!["relative".into()],
             destination: None,
+            format: None,
         };
         assert!(jobs.enqueue(relative).is_err());
     }

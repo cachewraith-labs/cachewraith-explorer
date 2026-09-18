@@ -1,7 +1,7 @@
 import { domAnimation, LazyMotion, MotionConfig } from 'motion/react';
 import { useEffect, useState } from 'react';
 
-import { fsApi, settingsApi } from '@/ipc/api';
+import { desktopApi, fsApi, settingsApi } from '@/ipc/api';
 
 import { useDesktop } from '../features/desktop/store';
 import { useFolderIcons } from '../features/icons/store';
@@ -23,9 +23,10 @@ export function App() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      const [settings, initial] = await Promise.all([
+      const [settings, initial, requested] = await Promise.all([
         settingsApi.load().catch(() => DEFAULT_SETTINGS),
         fsApi.initialLocation().catch(() => null),
+        desktopApi.takeOpenRequests().catch((): string[] => []),
         usePlaces
           .getState()
           .load()
@@ -35,7 +36,10 @@ export function App() {
       ]);
       if (cancelled) return;
       useSettings.getState().hydrate(settings);
-      useExplorer.getState().init(dirLocation(initial ?? (usePlaces.getState().home || '/')));
+      // Started by another app over D-Bus: its first folder replaces the home tab.
+      const [first, ...rest] = initial ? [initial, ...requested] : requested;
+      useExplorer.getState().init(dirLocation(first ?? (usePlaces.getState().home || '/')));
+      rest.forEach((path) => useExplorer.getState().openTab(dirLocation(path)));
       setReady(true);
     })();
     return () => {

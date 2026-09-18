@@ -13,11 +13,14 @@ XFCE, Cinnamon and tiling compositors like Hyprland and Sway.
 - **Background copy, move and delete** with progress, speed, pause and cancel
 - **Search** that filters instantly, or searches every subfolder
 - **Material You theming** from your wallpaper, or any color, in light or dark
-- **VS Code file icons**, and custom icons for any folder
+- **VS Code file icons**, and custom icons for any folder: Material folders, framework logos
+  (FastAPI, Laravel, Django…) and symbols (game, document…)
+- **Compress** to zip, 7z, tar.gz, tar.xz, tar.zst or tar.bz2
+- **Copy and paste into other apps**, VS Code included
 - **Photo previews** for images, a details panel, and a Properties window with live folder size
 - **Trash** with restore, **drive cards** with usage, **pinned folders**
 - **Command palette** (Ctrl+K) and a shortcut for almost everything
-- **Set as default file manager** in one click
+- **Set as default file manager** in one click, including VS Code's "Reveal in File Explorer"
 - **One-command updates**: `cachewraith-explorer update`
 
 ## Install
@@ -133,6 +136,8 @@ Settings live in `~/.config/cachewraith-explorer`; delete it for a clean slate.
 | Big lists  | [TanStack Virtual](https://tanstack.com/virtual)                                            |
 | File icons | [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme)    |
 | Icons (UI) | [Lucide](https://lucide.dev)                                                                |
+| Logos      | [Simple Icons](https://simpleicons.org)                                                     |
+| Archives   | zip, tar, flate2, liblzma, zstd, bzip2, sevenz-rust2                                        |
 | Build      | [Vite](https://vite.dev), [pnpm](https://pnpm.io), Docker (Ubuntu 22.04 packages)           |
 
 ## Documentation

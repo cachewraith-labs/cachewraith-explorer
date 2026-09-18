@@ -1,12 +1,12 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useEffect } from 'react';
 
-import { jobsApi, watchApi } from '@/ipc/api';
-import { onFsChanged, onJobsUpdated } from '@/ipc/events';
+import { desktopApi, jobsApi, watchApi } from '@/ipc/api';
+import { onFsChanged, onJobsUpdated, onOpenRequested } from '@/ipc/events';
 import { isTextInput } from '@/shared/lib/keys';
 
 import { useListings } from '../features/explorer/listings';
-import { type Location, locationTitle } from '../features/explorer/model';
+import { dirLocation, type Location, locationTitle } from '../features/explorer/model';
 import { currentLocation, getActiveLocation, useExplorer } from '../features/explorer/store';
 import { followFolderIconChanges } from '../features/icons/store';
 import { useJobs } from '../features/operations/jobs';
@@ -32,6 +32,14 @@ export function useBackgroundSync() {
     track(followFolderIconChanges());
     track(onJobsUpdated((snapshot) => useJobs.getState().upsert(snapshot)));
     track(onFsChanged((dirs) => useListings.getState().reloadDirs(dirs)));
+    // "Reveal in File Explorer" from other apps: each folder opens in a new tab.
+    const openRequested = () =>
+      void desktopApi.takeOpenRequests().then(
+        (paths) => paths.forEach((path) => useExplorer.getState().openTab(dirLocation(path))),
+        () => undefined,
+      );
+    track(onOpenRequested(openRequested));
+    openRequested();
     void jobsApi.list().then(
       (jobs) => jobs.forEach((job) => useJobs.getState().upsert(job)),
       () => undefined,

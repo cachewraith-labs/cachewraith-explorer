@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { basename, crumbs, dirname, expandTilde, isInside, mountFor, tildify } from './path';
+import { basename, crumbs, dirname, expandTilde, fileUri, isInside, mountFor, tildify } from './path';
 
 describe('path helpers', () => {
+  it('builds percent-encoded file URIs', () => {
+    expect(fileUri('/home/me/My Files/a#1.txt')).toBe('file:///home/me/My%20Files/a%231.txt');
+    expect(fileUri('/tmp/ข.png')).toBe('file:///tmp/%E0%B8%82.png');
+  });
+
   it('splits names and parents', () => {
     expect(basename('/home/me/a.txt')).toBe('a.txt');
     expect(basename('/')).toBe('/');

@@ -1,5 +1,6 @@
 //! "Use as default file manager": which app opens folders (`inode/directory`), and
-//! switching it to this app or back.
+//! switching it to this app or back. Switching also installs or removes the D-Bus
+//! activation file for `org.freedesktop.FileManager1` (see [`file_manager1`]).
 //!
 //! Works on any freedesktop desktop: `xdg-mime` when it is installed, otherwise the
 //! `mimeapps.list` file every desktop reads. External programs get argv, never a shell.
@@ -12,7 +13,7 @@ use std::process::{Command, Stdio};
 
 use serde::Serialize;
 
-use crate::desktop::entry;
+use crate::desktop::{entry, file_manager1};
 use crate::error::{AppError, AppResult};
 
 const FOLDER_MIME: &str = "inode/directory";
@@ -48,6 +49,7 @@ pub fn make_default() -> AppResult<Option<String>> {
     let previous = query_default().filter(|id| id != OUR_ID);
     ensure_desktop_entry()?;
     set_handler(OUR_ID)?;
+    file_manager1::install_activation_file(&launch_path()?)?;
     Ok(previous)
 }
 
@@ -56,7 +58,54 @@ pub fn restore(id: &str) -> AppResult<()> {
     if !entry::is_valid_id(id) || entry::find(id).is_none() {
         return Err(AppError::invalid("That app is no longer installed"));
     }
-    set_handler(id)
+    set_handler(id)?;
+    file_manager1::remove_activation_file()
+}
+
+/// An installed app that can open folders, offered when handing folders back.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FolderHandler {
+    pub id: String,
+    pub name: String,
+}
+
+/// Every other installed app that declares `inode/directory`, real file managers first
+/// (`Categories=…FileManager`), then by name. Hidden entries (`NoDisplay`, `Hidden`) are
+/// skipped; for duplicate ids the XDG-precedence winner counts.
+pub fn folder_handlers() -> Vec<FolderHandler> {
+    let mut seen = std::collections::HashSet::new();
+    let mut found: Vec<(bool, FolderHandler)> = Vec::new();
+    for dir in entry::application_dirs() {
+        let Ok(files) = fs::read_dir(&dir) else {
+            continue;
+        };
+        for file in files.flatten() {
+            let Some(id) = file.file_name().to_str().map(str::to_owned) else {
+                continue;
+            };
+            if !entry::is_valid_id(&id) || id == OUR_ID || !seen.insert(id.clone()) {
+                continue;
+            }
+            let path = file.path();
+            let is_true = |key| entry::read_key(&path, key).is_some_and(|v| v == "true");
+            let handles_folders = entry::read_key(&path, "MimeType")
+                .is_some_and(|types| types.split(';').any(|t| t.trim() == FOLDER_MIME));
+            if !handles_folders || is_true("NoDisplay") || is_true("Hidden") {
+                continue;
+            }
+            let file_manager = entry::read_key(&path, "Categories")
+                .is_some_and(|c| c.split(';').any(|c| c == "FileManager"));
+            let name = entry::read_name(&path)
+                .unwrap_or_else(|| id.trim_end_matches(".desktop").to_owned());
+            found.push((file_manager, FolderHandler { id, name }));
+        }
+    }
+    found.sort_by(|a, b| {
+        b.0.cmp(&a.0)
+            .then_with(|| a.1.name.to_lowercase().cmp(&b.1.name.to_lowercase()))
+    });
+    found.into_iter().map(|(_, handler)| handler).collect()
 }
 
 fn query_default() -> Option<String> {
@@ -142,6 +191,12 @@ fn ensure_desktop_entry() -> AppResult<()> {
         .stderr(Stdio::null())
         .status();
     Ok(())
+}
+
+/// Keeps the D-Bus activation file pointing at this binary while this app is the folder
+/// handler; also repairs installs made before the file existed. Blocking.
+pub fn ensure_activation_file() -> AppResult<()> {
+    file_manager1::install_activation_file(&launch_path()?)
 }
 
 /// An `AppImage` runs from a temporary mount; its stable location is in `$APPIMAGE`.

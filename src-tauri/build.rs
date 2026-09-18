@@ -22,6 +22,9 @@ const COMMANDS: &[&str] = &[
     "default_app_status",
     "make_default_app",
     "restore_default_app",
+    "take_open_requests",
+    "folder_handlers",
+    "copy_files_to_clipboard",
     // updates
     "check_update",
     // jobs

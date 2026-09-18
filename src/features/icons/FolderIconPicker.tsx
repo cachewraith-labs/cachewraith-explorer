@@ -5,10 +5,12 @@ import { cn } from '@/shared/lib/cn';
 import { basename } from '@/shared/lib/path';
 import { DialogButton, Modal } from '@/shared/ui/Modal';
 
-import { DEFAULT_FOLDER_ICON, FOLDER_ICONS, folderIconByName, folderIconLabel, iconUrl } from './material';
+import { FOLDER_ICON_GROUPS, type FolderIcon, type FolderIconGroup, folderIconGroup, folderIconMatches } from './folderIcons';
+import { FolderIconView } from './FolderIconView';
+import { DEFAULT_FOLDER_ICON, folderIconByName } from './material';
 import { useFolderIcons } from './store';
 
-/** Choose a folder's icon from the Material Icon Theme folder set. */
+/** Choose a folder's icon: a Material Icon Theme folder, a framework logo, or a symbol. */
 export function FolderIconPicker() {
   const path = useFolderIcons((s) => s.pickerFor);
   const close = useFolderIcons((s) => s.closePicker);
@@ -24,17 +26,27 @@ export function FolderIconPicker() {
   );
 }
 
+const TABS: { group: FolderIconGroup; label: string; hint: string }[] = [
+  { group: 'theme', label: 'Folders', hint: 'src, images, music…' },
+  { group: 'logo', label: 'Logos', hint: 'fastapi, laravel, godot…' },
+  { group: 'symbol', label: 'Symbols', hint: 'game, document, money…' },
+];
+
 function PickerBody({ path, onClose }: { path: string; onClose: () => void }) {
   const current = useFolderIcons((s) => s.icons[path]);
   const [query, setQuery] = useState('');
+  const [tab, setTab] = useState<FolderIconGroup>(() => (current ? folderIconGroup(current) : 'theme'));
   const suggested = folderIconByName(basename(path));
+  const choices = FOLDER_ICON_GROUPS[tab];
+  const hint = TABS.find((t) => t.group === tab)?.hint ?? '';
 
   const icons = useMemo(() => {
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-    const matches = FOLDER_ICONS.filter((icon) => terms.every((term) => icon.includes(term)));
+    const matches = choices.filter((icon) => folderIconMatches(icon, terms));
     // The icon VS Code would pick for this name comes first.
-    return suggested && matches.includes(suggested) ? [suggested, ...matches.filter((i) => i !== suggested)] : matches;
-  }, [query, suggested]);
+    const match = matches.find((icon) => icon.id === suggested);
+    return match ? [match, ...matches.filter((i) => i !== match)] : matches;
+  }, [query, suggested, choices]);
 
   const choose = (icon: string | null) => {
     void useFolderIcons.getState().set(path, icon);
@@ -49,15 +61,35 @@ function PickerBody({ path, onClose }: { path: string; onClose: () => void }) {
           autoFocus
           value={query}
           spellCheck={false}
-          placeholder={`Search ${FOLDER_ICONS.length} icons: src, images, music…`}
+          placeholder={`Search ${choices.length} icons: ${hint}`}
           aria-label="Search icons"
           onChange={(event) => setQuery(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter' && icons[0]) choose(icons[0]);
+            if (event.key === 'Enter' && icons[0]) choose(icons[0].id);
           }}
           className="min-w-0 flex-1 bg-transparent text-[13px] text-on-surface outline-none placeholder:text-outline"
         />
       </label>
+
+      <div role="tablist" aria-label="Icon kind" className="mb-3 flex gap-1.5">
+        {TABS.map(({ group, label }) => (
+          <button
+            key={group}
+            type="button"
+            role="tab"
+            aria-selected={tab === group}
+            onClick={() => setTab(group)}
+            className={cn(
+              'rounded-full px-3.5 py-1.5 text-[12.5px] font-medium transition-colors',
+              tab === group
+                ? 'bg-secondary-container text-on-secondary-container'
+                : 'text-on-surface-variant hover:bg-surface-high',
+            )}
+          >
+            {label} <span className="opacity-60">{FOLDER_ICON_GROUPS[group].length}</span>
+          </button>
+        ))}
+      </div>
 
       <div
         role="listbox"
@@ -66,11 +98,11 @@ function PickerBody({ path, onClose }: { path: string; onClose: () => void }) {
       >
         {icons.map((icon) => (
           <IconChoice
-            key={icon}
+            key={icon.id}
             icon={icon}
-            selected={icon === current}
-            suggested={icon === suggested}
-            onChoose={() => choose(icon)}
+            selected={icon.id === current}
+            suggested={icon.id === suggested}
+            onChoose={() => choose(icon.id)}
           />
         ))}
         {icons.length === 0 && (
@@ -100,7 +132,7 @@ function IconChoice({
   suggested,
   onChoose,
 }: {
-  icon: string;
+  icon: FolderIcon;
   selected: boolean;
   suggested: boolean;
   onChoose: () => void;
@@ -110,17 +142,17 @@ function IconChoice({
       type="button"
       role="option"
       aria-selected={selected}
-      title={icon}
+      title={icon.label}
       onClick={onChoose}
       className={cn(
         'relative flex flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 transition-[background-color,transform] duration-150 ease-emphasized active:scale-95',
         selected ? 'bg-primary-container text-on-primary-container' : 'hover:bg-surface-high',
       )}
     >
-      <img src={iconUrl(icon)} width={34} height={34} alt="" loading="lazy" decoding="async" draggable={false} />
-      <span className="w-full truncate text-center text-[11px] capitalize">{folderIconLabel(icon)}</span>
+      <FolderIconView icon={icon} size={34} />
+      <span className={cn('w-full truncate text-center text-[11px]', icon.kind !== 'logo' && 'capitalize')}>{icon.label}</span>
       {selected && <Check size={13} strokeWidth={2.6} aria-hidden className="absolute top-1.5 right-1.5" />}
-      {suggested && !selected && icon !== DEFAULT_FOLDER_ICON && (
+      {suggested && !selected && icon.id !== DEFAULT_FOLDER_ICON && (
         <span className="absolute top-1 right-1 rounded-full bg-tertiary px-1.5 text-[9px] font-semibold text-surface">
           match
         </span>

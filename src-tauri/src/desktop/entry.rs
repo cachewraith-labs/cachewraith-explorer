@@ -52,7 +52,8 @@ pub fn read_program(path: &Path) -> Option<String> {
     read_key(path, "Exec").and_then(|exec| first_exec_word(&exec.replace("\\\\", "\\")))
 }
 
-fn read_key(path: &Path, key: &str) -> Option<String> {
+/// One key from the `[Desktop Entry]` group, unlocalized.
+pub fn read_key(path: &Path, key: &str) -> Option<String> {
     let text = fs::read_to_string(path).ok()?;
     let mut in_main_group = false;
     for line in text.lines() {

@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   confirmTrash: false,
   previousFileManager: null,
   defaultPromptDismissed: false,
+  archiveFormat: 'zip',
 };
 
 interface SettingsStore {

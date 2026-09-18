@@ -3,9 +3,11 @@
 
 use std::sync::Arc;
 
-use tauri::{AppHandle, Emitter};
+use parking_lot::Mutex;
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::background::BackgroundTasks;
+use crate::desktop::file_manager1::FileManagerService;
 use crate::events;
 use crate::folder_icons::FolderIconStore;
 use crate::fs::{PathChange, PathChangeSink};
@@ -21,6 +23,9 @@ pub struct AppState {
     pub settings: SettingsStore,
     pub watcher: Option<DirWatcher>,
     pub initial_location: Option<String>,
+    /// Folders other apps asked to show (over D-Bus), until the UI takes them.
+    pub open_requests: Arc<Mutex<Vec<String>>>,
+    pub file_manager: FileManagerService,
     _theme_watcher: Option<ThemeWatcher>,
 }
 
@@ -52,6 +57,27 @@ impl AppState {
             })
         });
 
+        let open_requests = Arc::new(Mutex::new(Vec::new()));
+        let file_manager = {
+            let queue = Arc::clone(&open_requests);
+            let app = app.clone();
+            FileManagerService::new(Arc::new(move |uris: Vec<String>| {
+                let dirs: Vec<String> = uris
+                    .iter()
+                    .filter_map(|uri| crate::resolve_launch_arg(uri))
+                    .collect();
+                if dirs.is_empty() {
+                    return;
+                }
+                queue.lock().extend(dirs);
+                let _ = app.emit(events::OPEN_REQUESTED, ());
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.unminimize();
+                    let _ = window.set_focus();
+                }
+            }))
+        };
+
         Self {
             jobs: JobManager::new(sink, on_path_change),
             folder_icons,
@@ -59,6 +85,8 @@ impl AppState {
             settings: SettingsStore::new(),
             watcher,
             initial_location,
+            open_requests,
+            file_manager,
             _theme_watcher: theme_watcher,
         }
     }

@@ -11,6 +11,7 @@ import {
   Command,
   Copy,
   Eye,
+  FileArchive,
   FolderOpen,
   FolderPen,
   FolderPlus,
@@ -239,6 +240,14 @@ const STATIC_COMMANDS: AppCommand[] = [
       const paths = ctx.selected.length > 0 ? ctx.selected.map((e) => e.path) : [ctx.contextDir ?? ''];
       void fileActions.copyPaths(paths.filter(Boolean));
     },
+  },
+  {
+    id: 'compress',
+    title: 'Compress…',
+    group: 'File',
+    icon: FileArchive,
+    enabled: notTrash,
+    run: (ctx) => fileActions.requestCompress(ctx.selected.map((e) => e.path)),
   },
   {
     id: 'move-to-trash',

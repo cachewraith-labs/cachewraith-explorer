@@ -7,19 +7,21 @@ interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label: string;
+  disabled?: boolean;
 }
 
 /** Material 3 switch. */
-export function Switch({ checked, onChange, label }: SwitchProps) {
+export function Switch({ checked, onChange, label, disabled = false }: SwitchProps) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
       aria-label={label}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative flex h-7 w-[46px] shrink-0 items-center rounded-full border-2 px-[3px] transition-colors duration-200',
+        'relative flex h-7 w-[46px] shrink-0 items-center rounded-full border-2 px-[3px] transition-colors duration-200 disabled:opacity-40',
         checked ? 'border-primary bg-primary' : 'border-outline bg-surface-highest',
       )}
     >

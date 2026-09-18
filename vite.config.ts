@@ -6,11 +6,12 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
+import { brandLogos } from './tooling/brand-logos';
 import { materialIcons } from './tooling/material-icons';
 
 // Tauri expects a fixed dev port and must not have its Rust sources watched by Vite.
 export default defineConfig({
-  plugins: [react(), tailwindcss(), materialIcons()],
+  plugins: [react(), tailwindcss(), materialIcons(), brandLogos()],
   clearScreen: false,
   define: {
     __APP_VERSION__: JSON.stringify(

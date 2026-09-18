@@ -64,6 +64,8 @@ export function jobTitle(job: JobSnapshot, drives: readonly Drive[]): string {
       return `Moving${count} to Trash`;
     case 'delete':
       return `Deleting${count || ` ${basename(job.sources[0] ?? '')}`}`;
+    case 'compress':
+      return `Compressing${count || ` ${basename(job.sources[0] ?? '')}`} to .${job.format ?? 'zip'}`;
   }
 }
 

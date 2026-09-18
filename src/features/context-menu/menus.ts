@@ -76,6 +76,7 @@ export function itemMenu(): MenuEntry[] {
       : []),
     ...command('copy-path'),
     ...command('rename'),
+    ...command('compress'),
     ...(isDir ? command('folder-icon', { label: 'Change icon…' }) : []),
     ...(isDir
       ? pinned

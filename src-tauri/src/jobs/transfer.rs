@@ -228,7 +228,7 @@ fn remove_path(path: &Path) -> AppResult<()> {
 }
 
 /// Total bytes and item count of a tree, without following symlinks.
-fn measure(path: &Path) -> AppResult<(u64, u64)> {
+pub(super) fn measure(path: &Path) -> AppResult<(u64, u64)> {
     let meta = fs::symlink_metadata(path).map_err(|e| AppError::io(path, e))?;
     if !meta.is_dir() {
         return Ok((if meta.is_file() { meta.len() } else { 0 }, 1));

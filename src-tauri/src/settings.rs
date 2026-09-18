@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::desktop::entry;
 use crate::error::{AppError, AppResult};
 use crate::fs::paths;
+use crate::jobs::ArchiveFormat;
 use crate::launcher;
 
 const MAX_PINNED: usize = 64;
@@ -103,6 +104,8 @@ pub struct Settings {
     pub previous_file_manager: Option<String>,
     /// The one-time "make this your default file manager?" prompt was answered.
     pub default_prompt_dismissed: bool,
+    /// The format "Compress" last used, offered first next time.
+    pub archive_format: ArchiveFormat,
 }
 
 impl Default for Settings {
@@ -125,6 +128,7 @@ impl Default for Settings {
             confirm_trash: false,
             previous_file_manager: None,
             default_prompt_dismissed: false,
+            archive_format: ArchiveFormat::Zip,
         }
     }
 }

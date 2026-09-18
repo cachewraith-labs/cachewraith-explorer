@@ -6,6 +6,7 @@ import { call } from './client';
 import type {
   DefaultAppStatus,
   DesktopInfo,
+  FolderHandler,
   Drive,
   Entry,
   JobRequest,
@@ -35,6 +36,12 @@ export const desktopApi = {
   defaultAppStatus: () => call<DefaultAppStatus>('default_app_status'),
   makeDefault: () => call<{ status: DefaultAppStatus; previousId: string | null }>('make_default_app'),
   restoreDefault: (id: string) => call<DefaultAppStatus>('restore_default_app', { id }),
+  /** Other installed apps that open folders, real file managers first. */
+  folderHandlers: () => call<FolderHandler[]>('folder_handlers'),
+  /** Folders other apps asked to show ("Reveal in File Explorer"), oldest first. */
+  takeOpenRequests: () => call<string[]>('take_open_requests'),
+  /** Offers files on the system clipboard, so they paste into other apps. */
+  copyFilesToClipboard: (paths: string[], cut: boolean) => call<void>('copy_files_to_clipboard', { paths, cut }),
 };
 
 export const folderIconsApi = {

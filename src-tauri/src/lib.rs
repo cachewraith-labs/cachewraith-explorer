@@ -35,6 +35,7 @@ pub mod events {
     pub const FS_CHANGED: &str = "fs:changed";
     pub const THEME_CHANGED: &str = "theme:changed";
     pub const FOLDER_ICONS_CHANGED: &str = "folder-icons:changed";
+    pub const OPEN_REQUESTED: &str = "open:requested";
 }
 
 pub fn run() {
@@ -55,7 +56,11 @@ pub fn run() {
         };
         std::process::exit(updater::run_cli(&options));
     }
-    let first_arg = args.into_iter().next();
+    // A bus-started app waits for the request instead of opening a folder of its own.
+    let first_arg = args
+        .into_iter()
+        .next()
+        .filter(|arg| arg != desktop::file_manager1::ACTIVATION_FLAG);
     if let Some(code) = first_arg.as_deref().and_then(run_cli_flag) {
         std::process::exit(code);
     }
@@ -75,6 +80,7 @@ pub fn run() {
         )
         .setup(move |app| {
             app.manage(AppState::new(app.handle(), initial_location));
+            claim_file_manager_service(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -96,6 +102,9 @@ pub fn run() {
             commands::desktop::default_app_status,
             commands::desktop::make_default_app,
             commands::desktop::restore_default_app,
+            commands::desktop::take_open_requests,
+            commands::desktop::folder_handlers,
+            commands::desktop::copy_files_to_clipboard,
             commands::jobs::enqueue_job,
             commands::jobs::pause_job,
             commands::jobs::resume_job,
@@ -118,6 +127,21 @@ pub fn run() {
         .expect("error while running Cachewraith Explorer");
 }
 
+/// Serves `org.freedesktop.FileManager1` while this app is the default file manager, so
+/// "Reveal in File Explorer" and similar actions in other apps open here.
+fn claim_file_manager_service(app: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        if !desktop::default_app::status().is_default {
+            return;
+        }
+        if let Err(err) = desktop::default_app::ensure_activation_file() {
+            log::warn!("could not install the D-Bus activation file: {err}");
+        }
+        let handle = app.clone();
+        let _ = app.run_on_main_thread(move || handle.state::<AppState>().file_manager.claim());
+    });
+}
+
 /// Non-GUI flags for scripts and packagers. Returns the exit code, or `None` for a normal
 /// launch (a path, or nothing).
 fn run_cli_flag(arg: &str) -> Option<i32> {
@@ -130,6 +154,13 @@ fn run_cli_flag(arg: &str) -> Option<i32> {
         }
         "--make-default" => Some(match default_app::make_default() {
             Ok(previous) => {
+                // Remembered so Settings (or --restore-default) can switch back.
+                if let Some(previous) = &previous {
+                    let store = settings::SettingsStore::new();
+                    let mut current = store.load();
+                    current.previous_file_manager = Some(previous.clone());
+                    let _ = store.save(current);
+                }
                 println!(
                     "Folders now open with {}{}",
                     default_app::OUR_ID,
@@ -142,9 +173,36 @@ fn run_cli_flag(arg: &str) -> Option<i32> {
                 2
             }
         }),
+        "--restore-default" => {
+            let remembered = settings::SettingsStore::new().load().previous_file_manager;
+            let target = remembered
+                .filter(|id| desktop::entry::find(id).is_some())
+                .or_else(|| {
+                    default_app::folder_handlers()
+                        .into_iter()
+                        .next()
+                        .map(|h| h.id)
+                });
+            Some(
+                match target.map(|id| default_app::restore(&id).map(|()| id)) {
+                    Some(Ok(id)) => {
+                        println!("Folders now open with {id}");
+                        0
+                    }
+                    Some(Err(err)) => {
+                        eprintln!("Could not switch the default file manager: {err}");
+                        2
+                    }
+                    None => {
+                        eprintln!("No other file manager is installed");
+                        2
+                    }
+                },
+            )
+        }
         "--help" | "-h" => {
             println!(
-                "Usage: cachewraith-explorer [FOLDER | file:// URI]\n       cachewraith-explorer update [--check] [--force]   update to the latest release\n       cachewraith-explorer --make-default     open folders with this app system-wide\n       cachewraith-explorer --default-status   print the current folder handler (exit 0 if it is this app)"
+                "Usage: cachewraith-explorer [FOLDER | file:// URI]\n       cachewraith-explorer update [--check] [--force]   update to the latest release\n       cachewraith-explorer --make-default     open folders with this app system-wide\n       cachewraith-explorer --restore-default  give folders back to the previous file manager\n       cachewraith-explorer --default-status   print the current folder handler (exit 0 if it is this app)"
             );
             Some(0)
         }
@@ -154,7 +212,7 @@ fn run_cli_flag(arg: &str) -> Option<i32> {
 
 /// `cachewraith-explorer ~/storage` or `file:///home/me/storage` (what `xdg-open` passes).
 /// A file opens its containing folder.
-fn resolve_launch_arg(arg: &str) -> Option<String> {
+pub(crate) fn resolve_launch_arg(arg: &str) -> Option<String> {
     let raw = match arg.strip_prefix("file://") {
         Some(uri) => percent_encoding::percent_decode_str(uri)
             .decode_utf8()

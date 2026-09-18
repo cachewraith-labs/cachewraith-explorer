@@ -136,9 +136,13 @@ impl FolderIconStore {
 }
 
 /// Icon names from the icon theme: `folder-src`, `folder-node`, `folder-images`…
+/// `folder-…` (theme folders), `logo-…` (framework badges) or `symbol-…` (generic symbols).
+/// The UI knows the exact sets; this only keeps the stored names inert.
 fn is_icon_name(name: &str) -> bool {
     name.len() <= MAX_ICON_NAME
-        && name.starts_with("folder")
+        && (name.starts_with("folder")
+            || name.len() > "logo-".len() && name.starts_with("logo-")
+            || name.len() > "symbol-".len() && name.starts_with("symbol-"))
         && name
             .bytes()
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || matches!(b, b'-' | b'_'))
@@ -169,9 +173,25 @@ mod tests {
     #[test]
     fn rejects_names_outside_the_folder_icon_set() {
         let (_dir, store) = store();
-        for bad in ["../../x", "file", "folder src", "folder\"><script>"] {
+        for bad in [
+            "../../x",
+            "file",
+            "folder src",
+            "folder\"><script>",
+            "logo-",
+            "symbol-../x",
+            "logo-Fast API",
+        ] {
             assert!(store.set(Path::new("/x"), Some(bad)).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn accepts_logo_and_symbol_icons() {
+        let (_dir, store) = store();
+        store.set(Path::new("/p"), Some("logo-fastapi")).unwrap();
+        store.set(Path::new("/g"), Some("symbol-game")).unwrap();
+        assert_eq!(store.all().len(), 2);
     }
 
     #[test]

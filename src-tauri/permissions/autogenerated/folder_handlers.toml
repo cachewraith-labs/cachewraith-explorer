@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-folder-handlers"
+description = "Enables the folder_handlers command without any pre-configured scope."
+commands.allow = ["folder_handlers"]
+
+[[permission]]
+identifier = "deny-folder-handlers"
+description = "Denies the folder_handlers command without any pre-configured scope."
+commands.deny = ["folder_handlers"]

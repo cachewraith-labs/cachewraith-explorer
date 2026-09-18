@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { desktopApi } from '@/ipc/api';
-import type { DefaultAppStatus, DesktopInfo } from '@/ipc/types';
+import type { DefaultAppStatus, DesktopInfo, FolderHandler } from '@/ipc/types';
 
 import { useSettings } from '../settings/store';
 import { toast } from '../toasts/store';
@@ -9,11 +9,14 @@ import { toast } from '../toasts/store';
 interface DesktopStore {
   info: DesktopInfo;
   defaultApp: DefaultAppStatus | null;
+  /** Other installed apps that can take folders back. */
+  handlers: FolderHandler[];
   busy: boolean;
   load(): Promise<void>;
   refreshDefaultApp(): Promise<void>;
   makeDefault(): Promise<void>;
-  restorePrevious(): Promise<void>;
+  /** Stops being the default: folders go to `id`. */
+  handBack(id: string): Promise<void>;
 }
 
 /** Until the backend answers, assume a desktop that needs window buttons. */
@@ -36,6 +39,7 @@ export const useDesktop = create<DesktopStore>()((set, get) => {
   return {
     info: UNKNOWN,
     defaultApp: null,
+    handlers: [],
     busy: false,
 
     async load() {
@@ -45,9 +49,20 @@ export const useDesktop = create<DesktopStore>()((set, get) => {
     },
 
     async refreshDefaultApp() {
-      const defaultApp = await desktopApi.defaultAppStatus().catch(() => null);
-      set({ defaultApp });
+      const [defaultApp, handlers] = await Promise.all([
+        desktopApi.defaultAppStatus().catch(() => null),
+        desktopApi.folderHandlers().catch((): FolderHandler[] => []),
+      ]);
+      set({ defaultApp, handlers });
     },
+
+    handBack: (id) =>
+      change(async () => {
+        const status = await desktopApi.restoreDefault(id);
+        set({ defaultApp: status });
+        const name = get().handlers.find((h) => h.id === id)?.name ?? status.currentName ?? id;
+        toast.success(`Folders open with ${name} again`);
+      }, "Couldn't switch the default file manager"),
 
     makeDefault: () =>
       change(async () => {
@@ -57,14 +72,5 @@ export const useDesktop = create<DesktopStore>()((set, get) => {
         useSettings.getState().update({ ...patch, defaultPromptDismissed: true });
         toast.success('Files is now your default file manager');
       }, "Couldn't set the default file manager"),
-
-    restorePrevious: () =>
-      change(async () => {
-        const previous = useSettings.getState().settings.previousFileManager;
-        if (!previous) return;
-        const status = await desktopApi.restoreDefault(previous);
-        set({ defaultApp: status });
-        toast.success(`Folders open with ${status.currentName ?? previous} again`);
-      }, "Couldn't restore the previous file manager"),
   };
 });

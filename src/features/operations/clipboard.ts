@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 
-/** The app's own copy/cut buffer for files (the system clipboard only gets text paths). */
+/**
+ * The app's own copy/cut buffer for files. Copy and cut also offer the files on the
+ * system clipboard (see `desktop/clipboard.rs`), so they paste into other apps too.
+ */
 export interface FileClip {
   mode: 'copy' | 'cut';
   paths: string[];

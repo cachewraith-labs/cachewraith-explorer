@@ -49,13 +49,16 @@ export interface Drive {
   inHome: boolean;
 }
 
-export type JobKind = 'copy' | 'move' | 'trash' | 'delete';
+export type JobKind = 'copy' | 'move' | 'trash' | 'delete' | 'compress';
+export type ArchiveFormat = 'zip' | '7z' | 'tar.gz' | 'tar.xz' | 'tar.zst' | 'tar.bz2' | 'tar';
 export type JobStatus = 'queued' | 'running' | 'paused' | 'completed' | 'failed' | 'cancelled';
 
 export interface JobRequest {
   kind: JobKind;
   sources: string[];
   destination?: string;
+  /** Required for `compress`. */
+  format?: ArchiveFormat;
 }
 
 export interface JobSnapshot {
@@ -64,6 +67,7 @@ export interface JobSnapshot {
   status: JobStatus;
   sources: string[];
   destination: string | null;
+  format: ArchiveFormat | null;
   bytesTotal: number;
   bytesDone: number;
   itemsTotal: number;
@@ -101,6 +105,8 @@ export interface Settings {
   confirmTrash: boolean;
   previousFileManager: string | null;
   defaultPromptDismissed: boolean;
+  /** The format "Compress" last used. */
+  archiveFormat: ArchiveFormat;
 }
 
 export interface DesktopInfo {
@@ -109,6 +115,12 @@ export interface DesktopInfo {
   wayland: boolean;
   /** The compositor draws no title bar controls, so the app must. */
   windowControls: boolean;
+}
+
+/** An installed app that can open folders. */
+export interface FolderHandler {
+  id: string;
+  name: string;
 }
 
 export interface DefaultAppStatus {

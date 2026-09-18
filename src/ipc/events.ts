@@ -8,6 +8,7 @@ const EVENTS = {
   fsChanged: 'fs:changed',
   themeChanged: 'theme:changed',
   folderIconsChanged: 'folder-icons:changed',
+  openRequested: 'open:requested',
 } as const;
 
 export const onJobsUpdated = (handler: (snapshot: JobSnapshot) => void): Promise<UnlistenFn> =>
@@ -21,3 +22,6 @@ export const onThemeChanged = (handler: (palette: Palette) => void): Promise<Unl
 
 export const onFolderIconsChanged = (handler: (icons: Record<string, string>) => void): Promise<UnlistenFn> =>
   listen<Record<string, string>>(EVENTS.folderIconsChanged, (event) => handler(event.payload));
+
+/** Another app asked to show folders; fetch them with `desktopApi.takeOpenRequests`. */
+export const onOpenRequested = (handler: () => void): Promise<UnlistenFn> => listen(EVENTS.openRequested, () => handler());

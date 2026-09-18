@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub use crate::jobs::archive::ArchiveFormat;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum JobKind {
@@ -7,6 +9,8 @@ pub enum JobKind {
     Move,
     Trash,
     Delete,
+    /// Packs the sources into one archive in `destination`.
+    Compress,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -14,8 +18,11 @@ pub enum JobKind {
 pub struct JobRequest {
     pub kind: JobKind,
     pub sources: Vec<String>,
-    /// Target directory; required for copy and move.
+    /// Target directory; required for copy, move and compress.
     pub destination: Option<String>,
+    /// Archive format; required for compress.
+    #[serde(default)]
+    pub format: Option<ArchiveFormat>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -43,6 +50,7 @@ pub struct JobSnapshot {
     pub status: JobStatus,
     pub sources: Vec<String>,
     pub destination: Option<String>,
+    pub format: Option<ArchiveFormat>,
     pub bytes_total: u64,
     pub bytes_done: u64,
     pub items_total: u64,

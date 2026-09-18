@@ -206,7 +206,9 @@ function DefaultAppSection() {
   const info = useDesktop((s) => s.info);
   const status = useDesktop((s) => s.defaultApp);
   const busy = useDesktop((s) => s.busy);
+  const handlers = useDesktop((s) => s.handlers);
   const previous = useSettings((s) => s.settings.previousFileManager);
+  const [chosen, setChosen] = useState<string | null>(null);
 
   useEffect(() => {
     void useDesktop.getState().refreshDefaultApp();
@@ -214,6 +216,13 @@ function DefaultAppSection() {
 
   const isDefault = status?.isDefault === true;
   const current = status?.currentName ?? status?.currentId ?? 'no app';
+  // Where folders go when the switch is turned off: the user's pick, else the app Files
+  // replaced, else the first installed file manager.
+  const handBackTo = handlers.find((h) => h.id === chosen) ?? handlers.find((h) => h.id === previous) ?? handlers[0] ?? null;
+  const toggle = (on: boolean) => {
+    if (on) void useDesktop.getState().makeDefault();
+    else if (handBackTo) void useDesktop.getState().handBack(handBackTo.id);
+  };
 
   return (
     <>
@@ -235,22 +244,37 @@ function DefaultAppSection() {
             Used when other apps open a folder: downloads, “Show in folder”, xdg-open.
           </div>
         </div>
-        {!isDefault && (
-          <DialogButton
-            variant="tonal"
-            disabled={busy || status === null}
-            onClick={() => void useDesktop.getState().makeDefault()}
-          >
-            {busy ? 'Setting…' : 'Make default'}
-          </DialogButton>
-        )}
+        <Switch
+          label="Use Files as the default file manager"
+          checked={isDefault}
+          disabled={busy || status === null || (isDefault && handBackTo === null)}
+          onChange={toggle}
+        />
       </div>
 
-      {isDefault && previous && (
-        <Row title="Switch back" description={`Give folders back to ${previous.replace(/\.desktop$/, '')}.`}>
-          <DialogButton disabled={busy} onClick={() => void useDesktop.getState().restorePrevious()}>
-            Restore previous
-          </DialogButton>
+      {isDefault && (
+        <Row
+          title="When turned off, use"
+          description={
+            handBackTo
+              ? 'Folders, “Show in folder” and “Reveal in File Explorer” go to this app.'
+              : 'No other file manager is installed.'
+          }
+        >
+          {handlers.length > 0 && (
+            <select
+              aria-label="File manager to use instead"
+              value={handBackTo?.id ?? ''}
+              onChange={(event) => setChosen(event.target.value)}
+              className="max-w-[200px] rounded-full bg-surface-high px-3 py-1.5 text-[12.5px] outline-none"
+            >
+              {handlers.map((handler) => (
+                <option key={handler.id} value={handler.id}>
+                  {handler.name}
+                </option>
+              ))}
+            </select>
+          )}
         </Row>
       )}
 

@@ -21,3 +21,9 @@ declare module 'virtual:material-icons' {
   };
   export default table;
 }
+
+declare module 'virtual:brand-logos' {
+  /** Curated logo folders, built by `tooling/brand-logos.ts`. */
+  const logos: { slug: string; title: string }[];
+  export default logos;
+}

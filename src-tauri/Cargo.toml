@@ -4,7 +4,7 @@ version = "0.1.2"
 description = "A Material You file explorer for Hyprland"
 authors = ["cachewraith"]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.93"
 license = "MIT"
 publish = false
 
@@ -50,6 +50,17 @@ ureq = { version = "=3.4.0", features = ["json"] }
 minisign-verify = "0.2"
 base64 = "0.22"
 semver = "1"
+# Already built by Tauri on Linux; used directly for the clipboard and D-Bus.
+gtk = "0.18"
+# Archives for "Compress": zip, tar (+ gzip, xz, zstd, bzip2) and 7z.
+zip = { version = "8.6", default-features = false, features = ["deflate-flate2-zlib-rs", "time"] }
+time = { version = "0.3", default-features = false, features = ["std"] }
+tar = { version = "0.4", default-features = false }
+flate2 = "1"
+liblzma = { version = "0.4", features = ["static"] }
+zstd = { version = "0.13", default-features = false }
+bzip2 = "0.6"
+sevenz-rust2 = { version = "0.22", default-features = false, features = ["compress", "util"] }
 
 [dev-dependencies]
 tempfile = "3"

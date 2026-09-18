@@ -1,4 +1,4 @@
-import { CircleCheck, HardDrive, Pause, Play, Trash, TriangleAlert, X } from 'lucide-react';
+import { CircleCheck, FileArchive, HardDrive, Pause, Play, Trash, TriangleAlert, X } from 'lucide-react';
 import { AnimatePresence, m } from 'motion/react';
 
 import { jobsApi } from '@/ipc/api';
@@ -63,7 +63,9 @@ function ProgressCard({ job }: { job: JobSnapshot }) {
   const total = byBytes ? job.bytesTotal : job.itemsTotal;
   const fraction = job.status === 'completed' ? 1 : total > 0 ? Math.min(done / total, 1) : 0;
   const remaining = job.bytesPerSecond > 0 ? (job.bytesTotal - job.bytesDone) / job.bytesPerSecond : 0;
-  const pausable = (job.kind === 'copy' || job.kind === 'move') && (job.status === 'running' || job.status === 'paused');
+  const pausable =
+    (job.kind === 'copy' || job.kind === 'move' || job.kind === 'compress') &&
+    (job.status === 'running' || job.status === 'paused');
   const StatusIcon =
     job.status === 'completed'
       ? CircleCheck
@@ -71,7 +73,9 @@ function ProgressCard({ job }: { job: JobSnapshot }) {
         ? TriangleAlert
         : job.kind === 'trash' || job.kind === 'delete'
           ? Trash
-          : HardDrive;
+          : job.kind === 'compress'
+            ? FileArchive
+            : HardDrive;
 
   return (
     <div className="rounded-[18px] bg-surface-highest p-4 shadow-[0_12px_34px_rgba(0,0,0,0.4)]">

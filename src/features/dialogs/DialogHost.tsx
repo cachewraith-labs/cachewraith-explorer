@@ -1,9 +1,13 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 
+import type { ArchiveFormat } from '@/ipc/types';
+import { cn } from '@/shared/lib/cn';
+import { basename } from '@/shared/lib/path';
 import { DialogButton, Modal } from '@/shared/ui/Modal';
 
 import { selectActiveTabId, useExplorer } from '../explorer/store';
 import { fileActions } from '../operations/actions';
+import { useSettings } from '../settings/store';
 import { type DialogRequest, useDialogs } from './store';
 
 export function DialogHost() {
@@ -37,6 +41,7 @@ export function DialogHost() {
           onSubmit={(name) => fileActions.createFolder(dialog.parent, name, activeTab())}
         />
       )}
+      {dialog?.type === 'compress' && <CompressBody key={dialog.paths.join('\n')} paths={dialog.paths} onClose={close} />}
     </Modal>
   );
 }
@@ -51,6 +56,10 @@ function titleOf(dialog: DialogRequest): string {
       return 'Rename';
     case 'newFolder':
       return 'New folder';
+    case 'compress':
+      return dialog.paths.length === 1
+        ? `Compress "${basename(dialog.paths[0] ?? '')}"`
+        : `Compress ${dialog.paths.length} items`;
   }
 }
 
@@ -129,5 +138,53 @@ function NameForm({ initial, submitLabel, selectStem, onClose, onSubmit }: NameF
         </DialogButton>
       </div>
     </form>
+  );
+}
+
+const ARCHIVE_FORMATS: { format: ArchiveFormat; hint: string }[] = [
+  { format: 'zip', hint: 'Opens everywhere' },
+  { format: '7z', hint: 'Smallest, needs 7-Zip on Windows' },
+  { format: 'tar.gz', hint: 'The Linux classic' },
+  { format: 'tar.xz', hint: 'Small, slower to make' },
+  { format: 'tar.zst', hint: 'Fast and small' },
+  { format: 'tar.bz2', hint: 'Older, widely supported' },
+  { format: 'tar', hint: 'No compression' },
+];
+
+function CompressBody({ paths, onClose }: { paths: string[]; onClose: () => void }) {
+  const [format, setFormat] = useState<ArchiveFormat>(() => useSettings.getState().settings.archiveFormat);
+  const compress = () => {
+    onClose();
+    fileActions.compress(paths, format);
+  };
+
+  return (
+    <>
+      <div role="radiogroup" aria-label="Archive format" className="mb-4 grid grid-cols-2 gap-1.5">
+        {ARCHIVE_FORMATS.map((option) => (
+          <button
+            key={option.format}
+            type="button"
+            role="radio"
+            aria-checked={format === option.format}
+            onClick={() => setFormat(option.format)}
+            onDoubleClick={compress}
+            className={cn(
+              'flex flex-col items-start rounded-xl px-3 py-2 text-left transition-colors',
+              format === option.format ? 'bg-primary-container text-on-primary-container' : 'bg-surface hover:bg-surface-high',
+            )}
+          >
+            <span className="font-mono text-[12.5px] font-semibold">.{option.format}</span>
+            <span className="text-[11px] opacity-75">{option.hint}</span>
+          </button>
+        ))}
+      </div>
+      <div className="flex justify-end gap-2">
+        <DialogButton onClick={onClose}>Cancel</DialogButton>
+        <DialogButton autoFocus variant="tonal" onClick={compress}>
+          Compress
+        </DialogButton>
+      </div>
+    </>
   );
 }

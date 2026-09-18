@@ -6,7 +6,9 @@ import { cn } from '@/shared/lib/cn';
 
 import { useSetting } from '../settings/store';
 import { useAppliedScheme } from '../theme/palette';
-import { DEFAULT_FOLDER_ICON, fileIconName, folderIconByName, iconUrl, isFolderIcon } from './material';
+import { parseFolderIcon } from './folderIcons';
+import { FolderIconView } from './FolderIconView';
+import { DEFAULT_FOLDER_ICON, fileIconName, folderIconByName, iconUrl } from './material';
 import { useFolderIcons } from './store';
 
 interface EntryIconProps {
@@ -18,8 +20,8 @@ interface EntryIconProps {
 /**
  * The icon for a file or folder:
  * - files: VS Code's Material Icon Theme, detected from the name and extension;
- * - folders: the user's custom icon, else the theme-tinted glyph (or Material icons by
- *   folder name, if chosen in Settings).
+ * - folders: the user's custom icon (theme folder, logo badge or symbol), else the
+ *   theme-tinted glyph (or Material icons by folder name, if chosen in Settings).
  */
 export const EntryIcon = memo(function EntryIcon({ entry, size, className }: EntryIconProps) {
   const isFolder = entry.kind === 'dir';
@@ -28,12 +30,22 @@ export const EntryIcon = memo(function EntryIcon({ entry, size, className }: Ent
   const light = useAppliedScheme((s) => !s.dark);
   const [failedIcon, setFailedIcon] = useState<string | null>(null);
 
+  const customIcon = custom ? parseFolderIcon(custom) : null;
+  if (customIcon && customIcon.id !== failedIcon) {
+    return (
+      <FolderIconView
+        icon={customIcon}
+        size={size}
+        onError={() => setFailedIcon(customIcon.id)}
+        className={cn(entry.isHidden && 'opacity-70', className)}
+      />
+    );
+  }
+
   const icon = isFolder
-    ? custom && isFolderIcon(custom)
-      ? custom
-      : style === 'material'
-        ? (folderIconByName(entry.name, light) ?? DEFAULT_FOLDER_ICON)
-        : null
+    ? style === 'material'
+      ? (folderIconByName(entry.name, light) ?? DEFAULT_FOLDER_ICON)
+      : null
     : fileIconName(entry.name, light);
 
   if (icon === null || icon === failedIcon) {

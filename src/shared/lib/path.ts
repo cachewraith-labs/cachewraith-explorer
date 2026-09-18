@@ -61,3 +61,8 @@ export function mountFor<T extends { mountPoint: string }>(path: string, mounts:
   }
   return best;
 }
+
+/** `/home/me/My Files/a#1.txt` → `file:///home/me/My%20Files/a%231.txt`, as other apps expect. */
+export function fileUri(path: string): string {
+  return `file://${path.split('/').map(encodeURIComponent).join('/')}`;
+}

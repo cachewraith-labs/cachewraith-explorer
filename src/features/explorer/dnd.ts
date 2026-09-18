@@ -2,15 +2,19 @@ import type React from 'react';
 import { create } from 'zustand';
 
 import type { Drive } from '@/ipc/types';
-import { basename, dirname, isInside, mountFor } from '@/shared/lib/path';
+import { basename, dirname, fileUri, isInside, mountFor } from '@/shared/lib/path';
 
 import { fileActions } from '../operations/actions';
 import { usePlaces } from '../places/store';
 
 /**
- * In-app drag and drop of files. The dragged paths live in a store rather than only in
+ * Drag and drop of files. The dragged paths live in a store rather than only in
  * `dataTransfer`, because browsers hide `dataTransfer` data until the drop, and targets
  * need them earlier to show "copy" vs "move".
+ *
+ * WebKitGTK runs HTML drags as native GTK drags, so the standard `text/uri-list` and
+ * `text/plain` types set here are what other apps (VS Code, file managers, browsers, chat
+ * apps) receive when the drag leaves the window.
  */
 const MIME = 'application/x-cachewraith-paths';
 
@@ -29,6 +33,9 @@ export const useDrag = create<DragStore>()((set) => ({
 
 export function startDrag(event: React.DragEvent, paths: string[]) {
   event.dataTransfer.setData(MIME, JSON.stringify(paths));
+  // RFC 2483: CRLF-separated URIs.
+  event.dataTransfer.setData('text/uri-list', paths.map(fileUri).join('\r\n'));
+  event.dataTransfer.setData('text/plain', paths.join('\n'));
   event.dataTransfer.effectAllowed = 'copyMove';
   const ghost = createGhost(paths);
   event.dataTransfer.setDragImage(ghost, 24, 24);
