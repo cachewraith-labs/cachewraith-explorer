@@ -165,7 +165,7 @@ fn update_with_pkgbuild(agent: &Agent, release: &Release) -> AppResult<()> {
 fn agent() -> Agent {
     Agent::config_builder()
         .https_only(true)
-        .timeout_global(Some(Duration::from_secs(600)))
+        .timeout_global(Some(Duration::from_mins(10)))
         .user_agent(format!(
             "cachewraith-explorer/{}",
             env!("CARGO_PKG_VERSION")
