@@ -1,6 +1,6 @@
 [package]
 name = "cachewraith-explorer"
-version = "0.1.2"
+version = "0.2.0"
 description = "A Material You file explorer for Hyprland"
 authors = ["cachewraith"]
 edition = "2024"
